@@ -97,3 +97,7 @@ export const uploadBookmarkedRecipe = (file: File | null, uid: string | null, on
 
 export const uploadSavedRecipe = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "recipes/saved", onSuccess, onError);
+
+export const uploadPatientSetupInfo = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
+  handleUpload(file, uid, "healthdata", onSuccess, onError);
+
