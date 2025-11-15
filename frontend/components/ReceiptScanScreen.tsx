@@ -1,6 +1,7 @@
 import { X, Image as ImageIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { useEffect, useRef, useState } from "react";
+import { auth } from "../firebaseConfig";
 
 interface ReceiptScanScreenProps {
   onScanComplete: (items: string[]) => void;
@@ -85,21 +86,84 @@ export default function ReceiptScanScreen({
     }
   };
 
-  const handleConfirmCapture = () => {
-    // Simulate scanning - in production this would send to OCR/backend
-    const mockItems = [
-      "Whole Wheat Bread",
-      "Chicken Breast (2 lbs)",
-      "Broccoli",
-      "Brown Rice",
-      "Greek Yogurt",
-      "Salmon Fillet",
-      "Spinach",
-      "Olive Oil",
-      "Eggs (12 count)",
-      "Tomatoes",
-    ];
-    onScanComplete(mockItems);
+  const handleConfirmCaptureTestingOCR = async () => {
+    try {
+      console.log("🔄 Starting OCR testing workflow...");
+      
+      // Get current logged-in user's uid
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        alert("You must be logged in to use OCR");
+        return;
+      }
+      
+      const uid = currentUser.uid;
+      console.log(`📝 Current User ID: ${uid}`);
+      console.log(`📊 Searching for images in: users/${uid}/images/`);
+
+      // Step 1: Trigger OCR processing on most recent image
+      console.log("🔍 Step 1: Triggering OCR processing...");
+      alert("Processing your images with OCR...");
+      
+      const ocrResponse = await fetch("http://localhost:8080/process-ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+
+      if (!ocrResponse.ok) {
+        throw new Error(`OCR trigger failed: ${ocrResponse.statusText}`);
+      }
+
+      const ocrData = await ocrResponse.json();
+      console.log("✅ OCR processing started", ocrData);
+
+      // Step 2: Wait for OCR to process
+      console.log("⏳ Step 2: Waiting for OCR processing (this may take a minute)...");
+      alert("Processing images with OCR (this may take a minute)...");
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Step 3: Retrieve OCR results
+      console.log("📥 Step 3: Retrieving OCR results...");
+      const resultsResponse = await fetch(
+        `http://localhost:8080/ocr-results/${uid}`
+      );
+
+      if (!resultsResponse.ok) {
+        throw new Error(`Failed to retrieve results: ${resultsResponse.statusText}`);
+      }
+
+      const resultsData = await resultsResponse.json();
+      console.log("✅ OCR results retrieved", resultsData);
+
+      // Extract text from the most recent result
+      if (resultsData.results && resultsData.results.length > 0) {
+        const latestResult = resultsData.results[0];
+        const extractedText = latestResult.full_text || "";
+
+        console.log("📄 Extracted Text Preview:");
+        console.log(extractedText.substring(0, 200) + "...");
+
+        // Step 4: Complete the scan with extracted items
+        console.log("🎉 Step 4: Completing scan with extracted data...");
+        
+        // Parse extracted text into items (split by newlines/common delimiters)
+        const items: string[] = extractedText
+          .split(/[\n,;]+/)
+          .map((item: string) => item.trim())
+          .filter((item: string) => item.length > 0)
+          .slice(0, 10); // Limit to 10 items
+
+        alert(`✅ OCR Complete! Extracted ${items.length} items.`);
+        onScanComplete(items);
+      } else {
+        console.warn("⚠️ No OCR results found");
+        alert("No images found in your storage or OCR still processing. Please try again.");
+      }
+    } catch (error) {
+      console.error("❌ OCR testing workflow error:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   };
 
   const handleRetake = () => {
@@ -179,10 +243,10 @@ export default function ReceiptScanScreen({
           {capturedImage ? (
             <>
               <Button
-                onClick={handleConfirmCapture}
+                onClick={handleConfirmCaptureTestingOCR}
                 className="w-full h-14 bg-green-600 hover:bg-green-700"
               >
-                Confirm & Scan
+                Confirm & Scan (OCR Test)
               </Button>
               <Button
                 onClick={handleRetake}

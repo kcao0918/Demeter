@@ -1,107 +1,134 @@
 #!/usr/bin/env python3
 """
-Quick-start script for Medical Document OCR with Google Vertex AI
-Run this script to set up and process medical documents
+Quick-start script for Medical Document OCR with Firebase Storage and Google Vertex AI
+Processes medical documents stored in Firebase Storage at users/{uid}/images/
+and saves OCR results to Firestore at users/{uid}/ocr_results/
 """
 
 import os
 import sys
-from config import validate_credentials, setup_environment, GOOGLE_CLOUD_PROJECT, GCS_BUCKET, GCS_FOLDER
+from config import validate_credentials, setup_firebase, FIREBASE_STORAGE_BUCKET, OCR_INPUT_FOLDER, OCR_SUBFOLDER
 from ocr_medical_documents import MedicalDocumentOCR
 from ocr_analysis import MedicalOCRAnalyzer
 
 
 def main():
-    print("=" * 60)
-    print("Medical Document OCR - Google Vertex AI")
-    print("=" * 60)
+    print("=" * 70)
+    print("Medical Document OCR - Firebase Storage + Google Vertex AI")
+    print("=" * 70)
     
-    # Validate and setup credentials
-    print("\n🔐 Validating credentials...")
+    # Validate Firebase credentials
+    print("\n🔐 Validating Firebase credentials...")
     is_valid, message = validate_credentials()
     print(f"   {message}")
     
     if not is_valid:
         print("\n❌ Please follow these steps:")
-        print("   1. Download your service account key from Google Cloud Console")
-        print("   2. Save it as 'service-account-key.json' in this directory")
-        print("   3. Update GOOGLE_CLOUD_PROJECT and GCS_BUCKET in config.py")
+        print("   1. Download your Firebase service account key from Firebase Console")
+        print("   2. Add it to your .env file as FIREBASE_SERVICE_KEY")
+        print("   3. Set FIREBASE_PROJECT_ID and FIREBASE_STORAGE_BUCKET in .env")
         sys.exit(1)
     
-    # Setup environment
-    setup_environment()
-    
-    # Get configuration
-    project_id = GOOGLE_CLOUD_PROJECT
-    gcs_bucket = GCS_BUCKET
-    gcs_folder = GCS_FOLDER
-    
-    print(f"\n✅ Configuration:")
-    print(f"   Project ID: {project_id}")
-    print(f"   GCS Bucket: {gcs_bucket}")
-    print(f"   GCS Folder: {gcs_folder}")
+    # Setup Firebase
+    print("\n🔄 Setting up Firebase...")
+    try:
+        setup_firebase()
+    except Exception as e:
+        print(f"❌ Firebase setup error: {e}")
+        sys.exit(1)
     
     # Initialize OCR processor
     print(f"\n🔄 Initializing OCR processor...")
     try:
-        ocr_processor = MedicalDocumentOCR(
-            project_id=project_id,
-            gcs_bucket=gcs_bucket,
-            gcs_folder=gcs_folder
-        )
+        ocr_processor = MedicalDocumentOCR()
     except Exception as e:
         print(f"❌ Error initializing OCR processor: {e}")
-        print("   Make sure credentials are properly configured")
+        print("   Make sure Firebase credentials are properly configured")
         sys.exit(1)
     
-    # List available images
-    print(f"\n📋 Scanning GCS folder for images...")
-    image_paths = ocr_processor.list_images_in_gcs_folder()
+    # Get user ID
+    print(f"\n👤 Enter user ID to process OCR for (or press Enter for 'demo-user'):")
+    uid = input("   User ID: ").strip() or "demo-user"
+    
+    # List available images for the user
+    print(f"\n📋 Scanning Firebase Storage for images...")
+    print(f"   Path: {OCR_INPUT_FOLDER}/{uid}/{OCR_SUBFOLDER}/")
+    image_paths = ocr_processor.list_images_for_user(uid)
     
     if not image_paths:
-        print(f"❌ No images found in gs://{gcs_bucket}/{gcs_folder}")
-        print("   Upload medical documents to the GCS folder and try again")
+        print(f"❌ No images found in gs://{FIREBASE_STORAGE_BUCKET}/{OCR_INPUT_FOLDER}/{uid}/{OCR_SUBFOLDER}/")
+        print("   Please upload medical documents to this path and try again")
         sys.exit(1)
     
-    print(f"✅ Found {len(image_paths)} image(s)")
-    for path in image_paths[:5]:  # Show first 5
-        print(f"   - {path}")
+    print(f"✅ Found {len(image_paths)} image(s) to process")
+    for i, path in enumerate(image_paths[:5], 1):
+        print(f"   {i}. {path}")
     if len(image_paths) > 5:
         print(f"   ... and {len(image_paths) - 5} more")
+    
+    # Confirm processing
+    confirm = input(f"\n🚀 Process {len(image_paths)} document(s)? (y/n): ").lower()
+    if confirm != 'y':
+        print("   Cancelled.")
+        sys.exit(0)
     
     # Process documents
     print(f"\n🔍 Processing medical documents with OCR...")
     print("   (This may take a few minutes depending on the number of documents)")
     
-    results = ocr_processor.process_all_documents()
+    results = ocr_processor.process_user_documents(uid)
     
-    # Save results
-    print(f"\n💾 Saving results...")
-    ocr_processor.save_results_to_json(results)
+    if not results:
+        print("❌ No results to save")
+        sys.exit(1)
     
-    # Optional: Save to GCS
-    save_to_gcs = input("Save results to GCS? (y/n): ").lower() == 'y'
-    if save_to_gcs:
-        ocr_processor.save_results_to_gcs(results, f"{gcs_folder}/ocr_results.json")
+    # Save results to Firestore (primary storage)
+    print(f"\n💾 Saving results to Firestore...")
+    try:
+        ocr_processor.save_results_to_firestore(uid, results)
+        print(f"   ✅ Results saved to users/{uid}/ocr_results/")
+    except Exception as e:
+        print(f"❌ Error saving to Firestore: {e}")
+    
+    # Save results to JSON file locally (backup)
+    print(f"\n💾 Saving local backup...")
+    try:
+        ocr_processor.save_results_to_json(results, f"ocr_results_{uid}.json")
+        print(f"   ✅ Backup saved to ocr_results_{uid}.json")
+    except Exception as e:
+        print(f"❌ Error saving JSON backup: {e}")
     
     # Generate analysis report
     print(f"\n📊 Generating analysis report...")
-    analyzer = MedicalOCRAnalyzer()
-    report = analyzer.generate_report(results)
-    analyzer.export_report_to_json(report)
+    try:
+        analyzer = MedicalOCRAnalyzer()
+        report = analyzer.generate_report(results)
+        analyzer.export_report_to_json(f"ocr_report_{uid}.json", report)
+    except Exception as e:
+        print(f"⚠️  Error generating report: {e}")
+        report = None
     
     # Print summary
-    print("\n" + "=" * 60)
-    print("Processing Complete!")
-    print("=" * 60)
-    print(f"✅ Successful: {report['summary']['successful']}/{report['summary']['total_documents']}")
-    print(f"❌ Failed: {report['summary']['failed']}/{report['summary']['total_documents']}")
-    print(f"📊 Success Rate: {report['summary']['success_rate']:.1f}%")
-    print(f"📈 Average Confidence: {report['text_metrics']['average_confidence']:.2%}")
-    print(f"\n📁 Output files:")
-    print(f"   - ocr_results.json (detailed results)")
-    print(f"   - ocr_report.json (analysis report)")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("🎉 Processing Complete!")
+    print("=" * 70)
+    
+    successful = sum(1 for r in results if not r.get("error"))
+    failed = len(results) - successful
+    success_rate = (successful / len(results) * 100) if results else 0
+    
+    print(f"✅ Successful: {successful}/{len(results)}")
+    print(f"❌ Failed: {failed}/{len(results)}")
+    print(f"📊 Success Rate: {success_rate:.1f}%")
+    
+    if report:
+        print(f"📈 Average Confidence: {report.get('text_metrics', {}).get('average_confidence', 0):.2%}")
+    
+    print(f"\n📁 Output:")
+    print(f"   - Firestore: users/{uid}/ocr_results/ (primary)")
+    print(f"   - JSON Backup: ocr_results_{uid}.json")
+    print(f"   - Report: ocr_report_{uid}.json")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
