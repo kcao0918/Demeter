@@ -21,6 +21,7 @@ const fridgeAnalysisConfig = {
   responseSchema: {
     type: Type.OBJECT,
     required: ["Ingredients"],
+    description: "List of ingredients in image",
     properties: {
       Ingredients: {
         type: Type.ARRAY,
@@ -32,7 +33,39 @@ const fridgeAnalysisConfig = {
   },
 };
 
+const ingredientsAnalysisConfig = {
+  temperature: 0.2,
+  thinkingConfig: {
+    thinkingBudget: -1,
+  },
+  imageConfig: {
+    imageSize: '1K',
+  },
+  responseMimeType: 'application/json',
+  responseSchema: {
+    type: Type.OBJECT,
+    required: ["include", "exclude"],
+    properties: {
+      include: {
+        type: Type.ARRAY,
+        description: "List of safe ingredients the patient can consume",
+        items: {
+          type: Type.STRING,
+        },
+      },
+      exclude: {
+        type: Type.ARRAY,
+        description: "List of ingredients to avoid",
+        items: {
+          type: Type.STRING,
+        },
+      },
+    },
+  },
+};
+
 
 module.exports = {
   fridgeAnalysisConfig,
+  ingredientsAnalysisConfig,
 };

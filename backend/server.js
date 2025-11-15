@@ -133,6 +133,32 @@ app.post("/api/process-ocr", async (req, res) => {
   }
 });
 
+// Categorize ingredients based on medical report
+app.post("/api/categorize-ingredients", async (req, res) => {
+  try {
+    if (!aiService) {
+      return res.status(503).json({ error: "AI service not available" });
+    }
+
+    const { medicalReportText, ingredients } = req.body;
+    
+    if (!medicalReportText) {
+      return res.status(400).json({ error: "medicalReportText is required (full_text from OCR)" });
+    }
+
+    if (!ingredients || !Array.isArray(ingredients)) {
+      return res.status(400).json({ error: "ingredients array is required (from analyze-fridge)" });
+    }
+
+    const result = await aiService.categorizeIngredients(medicalReportText, ingredients);
+    
+    res.json(result);
+  } catch (error) {
+    console.error("Ingredient categorization error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ---------------- Upload endpoint ----------------
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {

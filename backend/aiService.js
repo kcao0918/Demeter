@@ -9,7 +9,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const path = require('path');
-const { fridgeAnalysisConfig } = require('./aiConfig');
+const { fridgeAnalysisConfig, ingredientsAnalysisConfig } = require('./aiConfig');
 
 class aiService {
   constructor(apiKey = process.env.GEMINI_API_KEY) {
@@ -24,6 +24,7 @@ class aiService {
     // All configs from aiConfig.js
     this.configs = {
       fridgeAnalysis: fridgeAnalysisConfig,
+      ingredientsAnalysis: ingredientsAnalysisConfig,
     };
   }
 
@@ -107,6 +108,41 @@ class aiService {
     // console.log('Prompt loaded:', prompt);
 
     return this.analyzeImage(imageBuffer, mimeType, prompt, this.configs.fridgeAnalysis);
+  }
+
+  /**
+   * Categorize ingredients based on medical report
+   * @param {string} medicalReportText - Full text from OCR of medical report
+   * @param {Array<string>} ingredients - List of available ingredients from fridge
+   * @returns {Promise<Object>} Response with include/exclude arrays
+   */
+  async categorizeIngredients(medicalReportText, ingredients) {
+    const promptPath = path.join(__dirname, 'prompts', 'includeExclude.txt');
+    
+    if (!fs.existsSync(promptPath)) {
+      throw new Error(`includeExclude.txt not found at ${promptPath}`);
+    }
+    
+    let prompt = fs.readFileSync(promptPath, 'utf-8').trim();
+    
+    // Replace placeholders with actual data
+    prompt = prompt.replace('// Report from api/process_ocr', medicalReportText);
+    prompt = prompt.replace('// Report from api/analyze-fridge', JSON.stringify(ingredients));
+    
+    const model = 'gemini-2.5-pro';
+    
+    const contents = [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
+    ];
+
+    return this.generateContent(model, contents, this.configs.ingredientsAnalysis);
   }
 }
 
