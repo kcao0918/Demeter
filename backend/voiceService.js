@@ -5,24 +5,24 @@
 
 const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
 
-console.log('[VOICE-SERVICE] Loading VoiceService class...');
+// console.log('[VOICE-SERVICE] Loading VoiceService class...');
 
 class VoiceService {
   constructor(apiKey = process.env.ELEVENLABS_API_KEY) {
-    console.log('[VOICE-SERVICE] Constructor called');
-    console.log('[VOICE-SERVICE] API Key available:', !!apiKey);
+    // console.log('[VOICE-SERVICE] Constructor called');
+    // console.log('[VOICE-SERVICE] API Key available:', !!apiKey);
     
     if (!apiKey) {
       const error = "ELEVENLABS_API_KEY not found in environment variables";
-      console.error('[VOICE-SERVICE] ✗', error);
+      // console.error('[VOICE-SERVICE] ✗', error);
       throw new Error(error);
     }
     
-    console.log('[VOICE-SERVICE] ✓ API Key found, initializing ElevenLabsClient...');
+    // console.log('[VOICE-SERVICE] ✓ API Key found, initializing ElevenLabsClient...');
     this.client = new ElevenLabsClient({
       apiKey: apiKey,
     });
-    console.log('[VOICE-SERVICE] ✓ ElevenLabsClient initialized');
+    // console.log('[VOICE-SERVICE] ✓ ElevenLabsClient initialized');
     
     // Default configurations
     this.configs = {
@@ -31,7 +31,7 @@ class VoiceService {
         outputFormat: 'mp3_44100_128',
       },
     };
-    console.log('[VOICE-SERVICE] ✓ Configs set');
+    // console.log('[VOICE-SERVICE] ✓ Configs set');
   }
 
   /**
@@ -60,13 +60,19 @@ class VoiceService {
         modelId: config.modelId,
         outputFormat: config.outputFormat,
       });
+
+      // Convert stream to buffer
+      const chunks = [];
+      for await (const chunk of audio) {
+        chunks.push(chunk);
+      }
+      const audioBuffer = Buffer.concat(chunks);
+      const audioBase64 = audioBuffer.toString('base64');
       
-      const audioBuffer = await audio.arrayBuffer();
-      const audioBase64 = Buffer.from(audioBuffer).toString('base64');
       return {"audio": audioBase64};
 
     } catch (error) {
-      console.error('Text-to-speech conversion error:', error);
+      // console.error('Text-to-speech conversion error:', error);
       throw error;
     }
   }
