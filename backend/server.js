@@ -22,7 +22,7 @@ const io = socketIo(server, { cors: { origin: "*" } });
 // Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_KEY)),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // correct bucket URL
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 });
 const bucket = admin.storage().bucket();
 
@@ -136,7 +136,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     const { uid } = req.body;
     if (!uid) return res.status(400).send("Missing uid");
 
-    // Determine folder automatically based on mimetype
     let folder;
     if (req.file.mimetype.startsWith("image/") || req.file.mimetype === "application/pdf") {
       folder = "images";
@@ -146,17 +145,11 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(400).send("Unsupported file type");
     }
 
-    // User-specific path
     const timestamp = Date.now();
     const filename = `${timestamp}-${req.file.originalname}`;
 
-    // Allow caller to override folder via form field 'folder'. If provided,
-    // construct path as <uid>/<folder>/<filename>. Otherwise fall back to
-    // the default behavior: <folder>/<uid>/<filename> for backwards compat.
     let storagePath;
     if (req.body && req.body.folder) {
-      // Normalize folder: convert backslashes to slashes, trim slashes,
-      // and lowercase segments to produce predictable paths.
       const rawFolder = String(req.body.folder || "");
       const normalized = rawFolder
         .replace(/\\/g, "/")
@@ -170,14 +163,13 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     } else {
       storagePath = `${folder}/${uid}/${filename}`;
     }
+
     const file = bucket.file(storagePath);
 
-    // Upload to Firebase Storage
     await file.save(req.file.buffer, {
       metadata: { contentType: req.file.mimetype },
     });
 
-    // Optional: make public for testing
     await file.makePublic();
 
     const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
@@ -188,7 +180,55 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// WebSocket
+// ---------------- Fetch healthdata endpoint ----------------
+app.get("/healthdata/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    if (!uid) return res.status(400).send("Missing uid");
+
+    const prefix = `${uid}/healthdata/`;
+    console.log(`[HEALTHDATA] Fetching files with prefix: ${prefix}`);
+
+    const [files] = await bucket.getFiles({ prefix });
+
+    if (!files || files.length === 0) {
+      console.warn(`[HEALTHDATA] No files found for UID: ${uid}`);
+      console.warn(`[HEALTHDATA] Checked prefix: ${prefix}`);
+      return res.status(404).json({ error: "No healthdata found", prefix, uid });
+    }
+
+    // Sort files by timestamp in filename (assuming <timestamp>-<filename>.json)
+    console.log(`[HEALTHDATA] Found ${files.length} file(s) in ${prefix}:`);
+    files.forEach((f) => {
+      const fileName = f.name.split("/").pop() || "";
+      const timestamp = parseInt(fileName.split("-")[0] || "0");
+      console.log(`  - ${f.name} (timestamp: ${timestamp})`);
+    });
+
+    const latestFile = files.sort((a, b) => {
+      const aFileName = a.name.split("/").pop() || "";
+      const bFileName = b.name.split("/").pop() || "";
+      const aTime = parseInt(aFileName.split("-")[0] || "0");
+      const bTime = parseInt(bFileName.split("-")[0] || "0");
+      console.log(`[HEALTHDATA] Comparing ${aFileName} (${aTime}) vs ${bFileName} (${bTime})`);
+      return bTime - aTime;
+    })[0];
+
+    console.log(`[HEALTHDATA] Serving latest file: ${latestFile.name}`);
+
+    const contents = await latestFile.download();
+    const jsonData = JSON.parse(contents.toString("utf-8"));
+
+    console.log(`[HEALTHDATA] Parsed data keys:`, Object.keys(jsonData));
+    console.log(`[HEALTHDATA] firstName: ${jsonData.personalInfo.firstName}, lastName: ${jsonData.personalInfo.lastName}`);
+    res.json(jsonData);
+  } catch (err) {
+    console.error("[HEALTHDATA] Error fetching healthdata:", err);
+    res.status(500).json({ error: "Failed to fetch healthdata", details: err.message });
+  }
+});
+
+// ---------------- WebSocket ----------------
 io.on("connection", (socket) => {
   console.log("Client connected");
   socket.on("startProcess", () => socket.emit("processComplete", "Dummy output"));
