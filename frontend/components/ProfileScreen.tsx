@@ -10,20 +10,67 @@ import {
 } from "lucide-react";
 import { Card } from "./ui/card";
 import { Switch } from "./ui/switch";
-import { logout } from "../firebaseConfig";
+import { auth, logout } from "../firebaseConfig";
+import { useEffect, useState } from "react";
 
 export default function ProfileScreen() {
+  const [firstName, setFirstName] = useState("Loading");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        console.log("[PROFILE] No authenticated user");
+        return;
+      }
+
+      setEmail(user.email || "");
+      console.log(`[PROFILE] Fetching healthdata for uid: ${user.uid}`);
+
+      try {
+        const res = await fetch(`http://localhost:8080/healthdata/${user.uid}`);
+        console.log(`[PROFILE] Healthdata response status: ${res.status}`);
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.warn("[PROFILE] Healthdata not found or error:", errorData);
+          return; // gracefully handle missing healthdata
+        }
+
+        const data = await res.json();
+        console.log("[PROFILE] Received healthdata:", data);
+
+        // Extract firstName and lastName from the nested personalInfo structure
+        const firstName = data.personalInfo?.firstName || "User";
+        const lastName = data.personalInfo?.lastName || "";
+        
+        setFirstName(firstName);
+        setLastName(lastName);
+      } catch (err) {
+        console.error("[PROFILE] Failed to fetch healthdata:", err);
+        // Gracefully handle network errors; leave names as defaults
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const initials =
+    (firstName?.[0] || "") + (lastName?.[0] || "");
+
   return (
     <div className="flex flex-col h-full bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-white px-6 py-6 border-b">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white">
-            <span className="text-2xl">SJ</span>
+            <span className="text-2xl">{initials}</span>
           </div>
           <div>
-            <h2 className="text-gray-900">Sarah Johnson</h2>
-            <p className="text-gray-600">sarah.j@email.com</p>
+            <h2 className="text-gray-900">{`${firstName} ${lastName}`}</h2>
+            <p className="text-gray-600">{email}</p>
           </div>
         </div>
       </div>

@@ -5,9 +5,6 @@ const admin = require("firebase-admin");
 const multer = require("multer");
 const http = require("http");
 const socketIo = require("socket.io");
-const GeminiService = require("./aiService");
-const fs = require("fs");
-const path = require("path");
 
 // Initialize Express
 const app = express();
@@ -21,64 +18,12 @@ const io = socketIo(server, { cors: { origin: "*" } });
 // Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_KEY)),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // correct bucket URL
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 });
 const bucket = admin.storage().bucket();
 
 // File upload setup
 const upload = multer({ storage: multer.memoryStorage() });
-
-// Initialize  AI Service
-let aiService;
-try {
-  aiService = new GeminiService();
-  console.log("AI Service initialized");
-} catch (error) {
-  console.warn("AI Service not initialized:", error.message);
-}
-
-// ---------------- AI endpoints ----------------
-
-// Analyze fridge image for specific user
-app.post("/api/analyze-fridge", async (req, res) => {
-  try {
-    if (!aiService) {
-      return res.status(503).json({ error: "AI service not available" });
-    }
-
-    const { uid } = req.body;
-    if (!uid) {
-      return res.status(400).json({ error: "User ID (uid) is required" });
-    }
-
-    // List all files in images/fridge folder for this user
-    const prefix = `${uid}/images/fridge/`;
-    const [files] = await bucket.getFiles({ prefix });
-
-    // Debug 
-    // console.log(`Found ${files.length} files with prefix: ${prefix}`);
-    // console.log('Files:', files.map(f => f.name));
-
-    if (files.length === 0) {
-      return res.status(404).json({ error: "No fridge images found for this user" });
-    }
-
-    // Sort by timeCreated to get the latest
-    files.sort((a, b) => new Date(b.metadata.timeCreated) - new Date(a.metadata.timeCreated));
-    const latestFile = files[0];
-
-    // console.log(`Analyzing latest fridge image: ${latestFile.name}`);
-
-    const [imageBuffer] = await latestFile.download();
-    const mimeType = latestFile.metadata.contentType || 'image/jpeg';
-    const response = await aiService.analyzeFridgeImage(imageBuffer, mimeType);
-    
-    res.json(response);
-  } catch (error) {
-    console.error("Fridge analysis error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // ---------------- Upload endpoint ----------------
 app.post("/upload", upload.single("file"), async (req, res) => {
@@ -87,7 +32,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     const { uid } = req.body;
     if (!uid) return res.status(400).send("Missing uid");
 
-    // Determine folder automatically based on mimetype
     let folder;
     if (req.file.mimetype.startsWith("image/") || req.file.mimetype === "application/pdf") {
       folder = "images";
@@ -97,17 +41,11 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       return res.status(400).send("Unsupported file type");
     }
 
-    // User-specific path
     const timestamp = Date.now();
     const filename = `${timestamp}-${req.file.originalname}`;
 
-    // Allow caller to override folder via form field 'folder'. If provided,
-    // construct path as <uid>/<folder>/<filename>. Otherwise fall back to
-    // the default behavior: <folder>/<uid>/<filename> for backwards compat.
     let storagePath;
     if (req.body && req.body.folder) {
-      // Normalize folder: convert backslashes to slashes, trim slashes,
-      // and lowercase segments to produce predictable paths.
       const rawFolder = String(req.body.folder || "");
       const normalized = rawFolder
         .replace(/\\/g, "/")
@@ -121,14 +59,13 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     } else {
       storagePath = `${folder}/${uid}/${filename}`;
     }
+
     const file = bucket.file(storagePath);
 
-    // Upload to Firebase Storage
     await file.save(req.file.buffer, {
       metadata: { contentType: req.file.mimetype },
     });
 
-    // Optional: make public for testing
     await file.makePublic();
 
     const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
@@ -139,7 +76,55 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// WebSocket
+// ---------------- Fetch healthdata endpoint ----------------
+app.get("/healthdata/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    if (!uid) return res.status(400).send("Missing uid");
+
+    const prefix = `${uid}/healthdata/`;
+    console.log(`[HEALTHDATA] Fetching files with prefix: ${prefix}`);
+
+    const [files] = await bucket.getFiles({ prefix });
+
+    if (!files || files.length === 0) {
+      console.warn(`[HEALTHDATA] No files found for UID: ${uid}`);
+      console.warn(`[HEALTHDATA] Checked prefix: ${prefix}`);
+      return res.status(404).json({ error: "No healthdata found", prefix, uid });
+    }
+
+    // Sort files by timestamp in filename (assuming <timestamp>-<filename>.json)
+    console.log(`[HEALTHDATA] Found ${files.length} file(s) in ${prefix}:`);
+    files.forEach((f) => {
+      const fileName = f.name.split("/").pop() || "";
+      const timestamp = parseInt(fileName.split("-")[0] || "0");
+      console.log(`  - ${f.name} (timestamp: ${timestamp})`);
+    });
+
+    const latestFile = files.sort((a, b) => {
+      const aFileName = a.name.split("/").pop() || "";
+      const bFileName = b.name.split("/").pop() || "";
+      const aTime = parseInt(aFileName.split("-")[0] || "0");
+      const bTime = parseInt(bFileName.split("-")[0] || "0");
+      console.log(`[HEALTHDATA] Comparing ${aFileName} (${aTime}) vs ${bFileName} (${bTime})`);
+      return bTime - aTime;
+    })[0];
+
+    console.log(`[HEALTHDATA] Serving latest file: ${latestFile.name}`);
+
+    const contents = await latestFile.download();
+    const jsonData = JSON.parse(contents.toString("utf-8"));
+
+    console.log(`[HEALTHDATA] Parsed data keys:`, Object.keys(jsonData));
+    console.log(`[HEALTHDATA] firstName: ${jsonData.personalInfo.firstName}, lastName: ${jsonData.personalInfo.lastName}`);
+    res.json(jsonData);
+  } catch (err) {
+    console.error("[HEALTHDATA] Error fetching healthdata:", err);
+    res.status(500).json({ error: "Failed to fetch healthdata", details: err.message });
+  }
+});
+
+// ---------------- WebSocket ----------------
 io.on("connection", (socket) => {
   console.log("Client connected");
   socket.on("startProcess", () => socket.emit("processComplete", "Dummy output"));
