@@ -51,10 +51,11 @@ const App = () => {
       case "scan":
         return (
           <ReceiptScanScreen
-            onScanComplete={handleScanComplete}
             onBack={() => setCurrentScreen("home")}
+            onNavigate={setCurrentScreen} // pass this for redirect
           />
         );
+
       case "receipt-confirm":
         return (
           <ReceiptConfirmScreen
