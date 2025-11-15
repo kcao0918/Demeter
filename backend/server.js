@@ -17,7 +17,7 @@ const io = socketIo(server, { cors: { origin: "*" } });
 
 // Firebase Admin SDK
 admin.initializeApp({
-  credential: admin.credential.cert(require("./serviceKey.json")),
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_KEY)),
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // correct bucket URL
 });
 const bucket = admin.storage().bucket();
