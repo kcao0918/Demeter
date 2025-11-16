@@ -25,43 +25,53 @@ interface GroceryStoreScreenProps {
   onBack: () => void;
 }
 
-export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) {
+export default function GroceryStoreScreen({
+  onBack,
+}: GroceryStoreScreenProps) {
   const [stores, setStores] = useState<GroceryStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
-  const fetchNearbyGroceryStores = async (location: { lat: number; lng: number }) => {
+  const fetchNearbyGroceryStores = async (location: {
+    lat: number;
+    lng: number;
+  }) => {
     try {
       // console.log("[GROCERY] Fetching stores for location:", location);
-      const url = `http://localhost:8080/api/nearby-stores`;
+      const url = `https://demeter-4ss7.onrender.com/api/nearby-stores`;
       // console.log("[GROCERY] API URL:", url);
-      
+
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           lat: location.lat,
-          lng: location.lng
-        })
+          lng: location.lng,
+        }),
       });
-      
+
       // console.log("[GROCERY] Response status:", response.status);
       // console.log("[GROCERY] Response ok:", response.ok);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[GROCERY] Error response:", errorText);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        );
       }
-      
+
       const data = await response.json();
       // console.log("[GROCERY] Response data:", data);
       // console.log("[GROCERY] Data status:", data.status);
       // console.log("[GROCERY] Number of results:", data.results?.length || 0);
-      
+
       if (data.results && data.results.length > 0) {
         // console.log("[GROCERY] Setting stores:", data.results.length);
         setStores(data.results.slice(0, 10)); // Get top 10 stores
@@ -69,7 +79,7 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
         // console.warn("[GROCERY] No results found in response");
         setError("No grocery stores found nearby.");
       }
-      
+
       setLoading(false);
     } catch (err) {
       console.error("[GROCERY] Error fetching grocery stores:", err);
@@ -77,7 +87,9 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
       //   message: err instanceof Error ? err.message : String(err),
       //   stack: err instanceof Error ? err.stack : undefined
       // });
-      setError(`Failed to fetch grocery stores: ${err instanceof Error ? err.message : String(err)}`);
+      setError(
+        `Failed to fetch grocery stores: ${err instanceof Error ? err.message : String(err)}`
+      );
       setLoading(false);
     }
   };
@@ -95,7 +107,9 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
         },
         (error) => {
           console.error("[GROCERY] Error getting location:", error);
-          setError(`Unable to get your location: ${error.message}. Please enable location services.`);
+          setError(
+            `Unable to get your location: ${error.message}. Please enable location services.`
+          );
           setLoading(false);
         }
       );
@@ -105,7 +119,12 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
     }
   }, []);
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
     const R = 3959; // Radius of Earth in miles
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -141,7 +160,9 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
             <ArrowLeft size={20} />
           </Button>
           <div>
-            <h1 className="text-white text-lg font-semibold">Nearby Grocery Stores</h1>
+            <h1 className="text-white text-lg font-semibold">
+              Nearby Grocery Stores
+            </h1>
             <p className="text-white/80 text-xs">Find stores near you</p>
           </div>
         </div>
@@ -213,26 +234,41 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
 
                   <div className="flex flex-wrap gap-2 mb-4">
                     {distance && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         <Navigation size={14} />
                         <span>{distance} mi</span>
                       </Badge>
                     )}
 
                     {store.rating && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        <Star
+                          size={14}
+                          className="fill-yellow-400 text-yellow-400"
+                        />
                         <span>{store.rating.toFixed(1)}</span>
                       </Badge>
                     )}
 
                     {store.opening_hours && (
                       <Badge
-                        variant={store.opening_hours.open_now ? "default" : "destructive"}
+                        variant={
+                          store.opening_hours.open_now
+                            ? "default"
+                            : "destructive"
+                        }
                         className="flex items-center gap-1"
                       >
                         <Clock size={14} />
-                        <span>{store.opening_hours.open_now ? "Open Now" : "Closed"}</span>
+                        <span>
+                          {store.opening_hours.open_now ? "Open Now" : "Closed"}
+                        </span>
                       </Badge>
                     )}
                   </div>

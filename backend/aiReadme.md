@@ -3,6 +3,7 @@
 ## ✅ What's Configured
 
 Your backend now has Google Gemini AI integrated with:
+
 - **Structured JSON responses** with `Ingredients` array schema
 - **Image analysis** for fridge photos using `scanner.txt` prompt
 - **Type-safe schema** using `Type.OBJECT` and `Type.ARRAY`
@@ -21,7 +22,6 @@ npm install @google/genai mime
 npm install -D @types/node
 ```
 
-
 ### 2. Start Server
 
 ```bash
@@ -35,7 +35,7 @@ node server.js
 ### Analyze Fridge Image
 
 ```bash
-POST http://localhost:8080/api/analyze-fridge
+POST https://demeter-4ss7.onrender.com/api/analyze-fridge
 Content-Type: application/json
 
 {
@@ -44,6 +44,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "response": {
@@ -66,6 +67,7 @@ Content-Type: application/json
 ## 🔧 How It Works
 
 1. **User uploads fridge photo:**
+
    ```bash
    POST /upload
    file: fridge.jpg
@@ -76,6 +78,7 @@ Content-Type: application/json
 2. **Backend saves to:** `{uid}/images/fridge/{timestamp}-{filename}`
 
 3. **User requests analysis:**
+
    ```bash
    POST /api/analyze-fridge
    { "uid": "user123" }
@@ -109,6 +112,7 @@ responseSchema: {
 ```
 
 This ensures Gemini **always** returns:
+
 ```json
 {
   "Ingredients": ["item1", "item2", "item3"]
@@ -137,14 +141,17 @@ Current settings in `aiService.js`:
 
 ```javascript
 async function analyzeFridge(uid) {
-  const response = await fetch('http://localhost:8080/api/analyze-fridge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uid }),
-  });
-  
+  const response = await fetch(
+    "https://demeter-4ss7.onrender.com/api/analyze-fridge",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid }),
+    }
+  );
+
   const data = await response.json();
-  console.log('Ingredients:', data.response.Ingredients);
+  console.log("Ingredients:", data.response.Ingredients);
   // ["Milk", "Eggs", "Lettuce", ...]
 }
 ```

@@ -10,7 +10,7 @@ type TextToSpeechProps = {
   // Forwarded className for styling
   className?: string;
   // Optional: API base URL if different
-  apiBaseUrl?: string; // e.g., http://localhost:8080
+  apiBaseUrl?: string; // e.g., https://demeter-4ss7.onrender.com
 };
 
 const DEFAULT_SAMPLE =
@@ -21,7 +21,7 @@ const TextToSpeech: React.FC<TextToSpeechProps> = ({
   voiceId,
   label = "Play Audio",
   className,
-  apiBaseUrl = "http://localhost:8080",
+  apiBaseUrl = "https://demeter-4ss7.onrender.com",
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);

@@ -3,6 +3,7 @@
 ## ✅ Verification Complete
 
 The OCR folder has been successfully configured to:
+
 1. **Read** images from Firebase Storage at `users/{uid}/images/`
 2. **Process** current images with Google Vertex AI OCR
 3. **Save** OCR results to Firestore at `users/{uid}/ocr_results/`
@@ -32,18 +33,21 @@ Firebase Storage (gs://patient67.firebasestorage.app)
 ## Files Modified
 
 ### 1. **backend/ocr/ocr_medical_documents.py**
+
 - ✅ Updated to read from `users/{uid}/images/` in Firebase Storage
 - ✅ Process all images found in user's images folder
 - ✅ Extract text using Google Vertex AI Vision API
 - ✅ Save results to Firestore with metadata
 
 **Key Methods:**
+
 - `list_images_for_user(uid)` - Lists all images in `users/{uid}/images/`
 - `extract_text_from_firebase_image(file_path)` - OCR a single image
 - `process_user_documents(uid)` - Process all images for a user
 - `save_results_to_firestore(uid, results)` - Save to Firestore
 
 ### 2. **backend/ocr/quickstart.py**
+
 - ✅ Refactored for Firebase workflow
 - ✅ Validates Firebase credentials
 - ✅ Prompts for user ID
@@ -52,12 +56,14 @@ Firebase Storage (gs://patient67.firebasestorage.app)
 - ✅ Saves results to Firestore and JSON backup
 
 **Usage:**
+
 ```bash
 cd backend/ocr
 python3 quickstart.py
 ```
 
 ### 3. **backend/server.js**
+
 - ✅ Added `/process-ocr` endpoint (POST)
   - Triggers OCR processing for a user's images
   - Emits WebSocket events for progress tracking
@@ -66,6 +72,7 @@ python3 quickstart.py
   - Returns all processed documents for a user
 
 **New Endpoints:**
+
 ```
 POST /process-ocr
   Body: { uid: "user123", subfolder?: "images" }
@@ -76,15 +83,18 @@ GET /ocr-results/:uid
 ```
 
 ### 4. **backend/ocr/config.py**
+
 - ✅ Updated documentation for Firebase paths
 - ✅ Clarified path structure in comments
 
 ### 5. **backend/ocr/test_firebase_integration.py** (NEW)
+
 - ✅ Complete test suite for Firebase integration
 - ✅ Tests each step of the workflow
 - ✅ Verifies Firestore storage
 
 ### 6. **backend/ocr/FIREBASE_VERIFICATION.md** (NEW)
+
 - ✅ Complete verification document
 - ✅ Data flow documentation
 - ✅ Test procedures
@@ -95,30 +105,38 @@ GET /ocr-results/:uid
 ## Complete Workflow
 
 ### Step 1: Upload Image
+
 ```bash
-curl -X POST http://localhost:8080/upload \
+curl -X POST https://demeter-4ss7.onrender.com/upload \
   -F "file=@document.jpg" \
   -F "uid=user123" \
   -F "folder=images"
 ```
+
 **Result:** Image stored at `users/user123/images/timestamp-document.jpg`
 
 ### Step 2: Trigger OCR
+
 ```bash
-curl -X POST http://localhost:8080/process-ocr \
+curl -X POST https://demeter-4ss7.onrender.com/process-ocr \
   -H "Content-Type: application/json" \
   -d '{"uid": "user123"}'
 ```
+
 **Result:**
+
 - Python script scans `users/user123/images/`
 - Processes each image with Google Vertex AI Vision API
 - Saves results to Firestore at `users/user123/ocr_results/`
 
 ### Step 3: Retrieve Results
+
 ```bash
-curl -X GET http://localhost:8080/ocr-results/user123
+curl -X GET https://demeter-4ss7.onrender.com/ocr-results/user123
 ```
+
 **Result:**
+
 ```json
 {
   "uid": "user123",
@@ -168,12 +186,14 @@ Each document in `users/{uid}/ocr_results/{filename}` contains:
 The `/process-ocr` endpoint emits WebSocket events:
 
 ### Events Emitted:
+
 1. **ocr_start** - Processing started
 2. **ocr_progress** - Per-image progress updates
 3. **ocr_complete** - All processing finished
 4. **ocr_error** - Error occurred
 
 ### Listen for Events (Frontend):
+
 ```javascript
 socket.on("ocr_start", (data) => console.log("Started:", data));
 socket.on("ocr_progress", (data) => console.log("Processing:", data.message));
@@ -186,12 +206,14 @@ socket.on("ocr_error", (data) => console.log("Error:", data.error));
 ## Testing
 
 ### Run Full Integration Test
+
 ```bash
 cd backend/ocr
 python3 test_firebase_integration.py
 ```
 
 This will:
+
 1. ✅ Verify Firebase connection
 2. ✅ Initialize OCR processor
 3. ✅ List images in `users/{uid}/images/`
@@ -201,6 +223,7 @@ This will:
 7. ✅ Create JSON backup
 
 ### Run Quickstart Script
+
 ```bash
 cd backend/ocr
 python3 quickstart.py
@@ -211,6 +234,7 @@ python3 quickstart.py
 ## Configuration Requirements
 
 Ensure your `.env` file has:
+
 ```
 FIREBASE_PROJECT_ID=patient67
 FIREBASE_STORAGE_BUCKET=patient67.firebasestorage.app
@@ -221,13 +245,13 @@ FIREBASE_SERVICE_KEY={...complete json...}
 
 ## Path Verification
 
-| Component | Path | Status |
-|-----------|------|--------|
-| Image Storage | `users/{uid}/images/` | ✅ Verified |
-| OCR Input Folder | `users` | ✅ Verified |
-| OCR Subfolder | `images` | ✅ Verified |
-| Results (Firestore) | `users/{uid}/ocr_results/` | ✅ Verified |
-| Complete Image URI | `gs://bucket/users/{uid}/images/*` | ✅ Verified |
+| Component           | Path                               | Status      |
+| ------------------- | ---------------------------------- | ----------- |
+| Image Storage       | `users/{uid}/images/`              | ✅ Verified |
+| OCR Input Folder    | `users`                            | ✅ Verified |
+| OCR Subfolder       | `images`                           | ✅ Verified |
+| Results (Firestore) | `users/{uid}/ocr_results/`         | ✅ Verified |
+| Complete Image URI  | `gs://bucket/users/{uid}/images/*` | ✅ Verified |
 
 ---
 
@@ -237,6 +261,6 @@ FIREBASE_SERVICE_KEY={...complete json...}
 ✅ **OCR reads from:** `users/{uid}/images/`  
 ✅ **Results are saved to:** Firestore at `users/{uid}/ocr_results/`  
 ✅ **Backend endpoints available:** `/process-ocr` and `/ocr-results/{uid}`  
-✅ **Real-time updates via:** WebSocket events  
+✅ **Real-time updates via:** WebSocket events
 
 **Status: Ready for Production** 🚀

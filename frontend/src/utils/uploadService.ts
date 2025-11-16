@@ -28,7 +28,7 @@ const uploadToServer = async (
   formData.append("folder", folder); // send folder info to backend
 
   try {
-    const res = await fetch("http://localhost:8080/upload", {
+    const res = await fetch("https://demeter-4ss7.onrender.com/upload", {
       method: "POST",
       body: formData,
     });
@@ -85,27 +85,45 @@ const handleUpload = async (
  * Upload functions for specific folders
  */
 
-export const uploadUserFridgeImage = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "images/fridge", onSuccess, onError);
+export const uploadUserFridgeImage = (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => handleUpload(file, uid, "images/fridge", onSuccess, onError);
 
-export const uploadUserMedicalReport = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "images/medical_report", onSuccess, onError);
+export const uploadUserMedicalReport = (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => handleUpload(file, uid, "images/medical_report", onSuccess, onError);
 
-export const uploadUserInputFile = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "files/input", onSuccess, onError);
+export const uploadUserInputFile = (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => handleUpload(file, uid, "files/input", onSuccess, onError);
 
-export const uploadBookmarkedRecipe = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "recipes/bookmarked", onSuccess, onError);
+export const uploadBookmarkedRecipe = (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => handleUpload(file, uid, "recipes/bookmarked", onSuccess, onError);
 
 /**
  * Fetch bookmarked recipes for a user (returns the savedRecipeIds array from the most recently added bookmarked file)
  * @param uid - User ID
  * @returns Promise resolving to array of recipe details sorted by most recent
  */
-export const getBookmarkedRecipe = async (uid: string | null): Promise<RecipeDetails[]> => {
+export const getBookmarkedRecipe = async (
+  uid: string | null
+): Promise<RecipeDetails[]> => {
   if (!uid) throw new Error("Missing uid");
 
-  const url = `http://localhost:8080/${encodeURIComponent(uid)}/recipes/bookmarked/`;
+  const url = `https://demeter-4ss7.onrender.com/${encodeURIComponent(uid)}/recipes/bookmarked/`;
   const res = await fetch(url, { method: "GET" });
 
   if (!res.ok) {
@@ -116,20 +134,31 @@ export const getBookmarkedRecipe = async (uid: string | null): Promise<RecipeDet
   console.log("Bookmarked recipes response:", data);
   const recipeIds = data.savedRecipeIds || [];
   console.log("Bookmarked recipe IDs (most recent):", recipeIds);
-  
+
   // Fetch full recipe details for each ID
   const recipes = await Promise.all(
     recipeIds.map((id: number) => getRecipeInformation(id).catch(() => null))
   );
 
   // Return recipes in reverse order (most recently added first)
-  return recipes.filter((recipe): recipe is RecipeDetails => recipe !== null).reverse();
+  return recipes
+    .filter((recipe): recipe is RecipeDetails => recipe !== null)
+    .reverse();
 };
 
-export const uploadPatientSetupInfo = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "healthdata", onSuccess, onError);
+export const uploadPatientSetupInfo = (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => handleUpload(file, uid, "healthdata", onSuccess, onError);
 
-export const uploadSavedRecipe = async (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) => {
+export const uploadSavedRecipe = async (
+  file: File | null,
+  uid: string | null,
+  onSuccess?: (data: UploadResponse) => void,
+  onError?: (error: string) => void
+) => {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, "0");
@@ -137,12 +166,12 @@ export const uploadSavedRecipe = async (file: File | null, uid: string | null, o
   const dateFolder = `${yyyy}-${mm}-${dd}`;
 
   const folder = `recipes/saved/${dateFolder}`;
-  
+
   const data = await handleUpload(file, uid, folder, onSuccess, onError);
 
   // Update daily totals after upload
   if (uid) {
-    updateDailyNutritionTotals(uid).catch(err =>
+    updateDailyNutritionTotals(uid).catch((err) =>
       console.error("Failed to update daily totals:", err)
     );
   }

@@ -80,7 +80,7 @@ function AuthPage() {
     formData.append("uid", user.uid); // required for user-specific path
 
     try {
-      const res = await fetch("http://localhost:8080/upload", {
+      const res = await fetch("https://demeter-4ss7.onrender.com/upload", {
         method: "POST",
         body: formData,
       });

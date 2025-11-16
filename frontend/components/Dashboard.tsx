@@ -126,7 +126,7 @@ export default function Dashboard({
 
         // Fetch all saved recipes for today
         const response = await fetch(
-          `http://localhost:8080/${uid}/recipes/saved/${dateKey}`
+          `https://demeter-4ss7.onrender.com/${uid}/recipes/saved/${dateKey}`
         );
         if (!response.ok) {
           console.warn(`No saved recipes for ${uid} on ${dateKey}`);

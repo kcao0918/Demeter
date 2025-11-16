@@ -45,7 +45,10 @@ export function calculateCalories(personalInfo: PersonalInfo): number {
  * Calculate recommended daily sodium intake (mg) based on conditions and dietary preferences.
  * Defaults to 2300mg/day. Reduces to 1500mg if highBP or lowSodium diet.
  */
-export function calculateSodium(conditions: Conditions, dietary: Dietary): number {
+export function calculateSodium(
+  conditions: Conditions,
+  dietary: Dietary
+): number {
   let sodium = 2300; // default mg/day
   if (conditions.highBP || dietary.lowSodium) {
     sodium = 1500;
@@ -58,7 +61,10 @@ export function calculateSodium(conditions: Conditions, dietary: Dietary): numbe
  * Base: 10% of daily calories, 1g sugar = 4 kcal.
  * Reduce by 50% for diabetes.
  */
-export function calculateSugarLimit(calories: number, conditions: Conditions): number {
+export function calculateSugarLimit(
+  calories: number,
+  conditions: Conditions
+): number {
   let sugarCalories = calories * 0.1; // 10% of calories from sugar
   if (conditions.diabetes) sugarCalories *= 0.5; // cut by half if diabetic
   const sugarGrams = sugarCalories / 4; // convert kcal to grams
@@ -76,7 +82,9 @@ export async function updateDailyNutritionTotals(uid: string) {
   const dateKey = `${yyyy}-${mm}-${dd}`;
 
   try {
-    const response = await fetch(`http://localhost:8080/${uid}/recipes/saved/${dateKey}`);
+    const response = await fetch(
+      `https://demeter-4ss7.onrender.com/${uid}/recipes/saved/${dateKey}`
+    );
     if (!response.ok) {
       console.warn(`[RECIPES] No saved recipes found for ${uid} on ${dateKey}`);
       await setDoc(
@@ -98,9 +106,10 @@ export async function updateDailyNutritionTotals(uid: string) {
 
       const nutrients = recipe.nutrition.nutrients;
 
-      const calories = nutrients.find(n => n.name === "Calories")?.amount ?? 0;
-      const sodium = nutrients.find(n => n.name === "Sodium")?.amount ?? 0;
-      const sugar = nutrients.find(n => n.name === "Sugar")?.amount ?? 0;
+      const calories =
+        nutrients.find((n) => n.name === "Calories")?.amount ?? 0;
+      const sodium = nutrients.find((n) => n.name === "Sodium")?.amount ?? 0;
+      const sugar = nutrients.find((n) => n.name === "Sugar")?.amount ?? 0;
 
       totalCalories += calories;
       totalSodium += sodium;
@@ -109,7 +118,7 @@ export async function updateDailyNutritionTotals(uid: string) {
 
     console.log(
       `[RECIPES] Daily totals for ${uid} on ${dateKey}: ` +
-      `calories=${totalCalories}, sugar=${totalSugar}, sodium=${totalSodium}`
+        `calories=${totalCalories}, sugar=${totalSugar}, sodium=${totalSodium}`
     );
 
     await setDoc(
