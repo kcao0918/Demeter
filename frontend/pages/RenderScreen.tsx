@@ -9,6 +9,7 @@ import HealthPlanScreen from "../components/HealthPlanScreen";
 import ProfileScreen from "../components/ProfileScreen";
 import GroceryStoreScreen from "../components/GroceryStoreScreen";
 import BottomNav from "../components/BottomNav";
+import { FavoriteRecipes } from "../components/FavoriteRecipes";
 import { auth } from "../firebaseConfig";
 
 const App = () => {
@@ -87,7 +88,9 @@ const App = () => {
       case "receipt-confirm":
         return <ReceiptConfirmScreen items={scannedItems} onConfirm={handleReceiptConfirm} onBack={() => setCurrentScreen("scan")} />;
       case "recipes":
-        return <RecipesScreen />;
+        return <RecipesScreen onNavigate={setCurrentScreen} />;
+      case "meal-prep":
+        return <FavoriteRecipes onBack={() => setCurrentScreen("recipes")} />;
       case "health-plan":
         return <HealthPlanScreen />;
       case "profile":

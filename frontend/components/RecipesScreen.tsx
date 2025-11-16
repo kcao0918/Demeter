@@ -24,11 +24,17 @@ import {
   Dialog,
   DialogContent,
 } from "../components/ui/dialog";
-import { getCategorization, type CategorizationResult } from "../src/utils/healthPlanService";
+import { getCategorization } from "../src/utils/healthPlanService";
 import { auth } from "../firebaseConfig";
+
+import { uploadBookmarkedRecipe } from "../src/utils/uploadService";
 
 import TextToSpeech from "./TextToSpeech";
 
+import { uploadSavedRecipe } from "../src/utils/uploadService";
+import { updateDailyNutritionTotals } from "../src/utils/dailyNutrition";
+
+// INGREDIENTS the user cannot eat
 export default function App() {
   const [recipeList, setRecipeList] = useState<RecipeDetails[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +104,8 @@ export default function App() {
 
     fetchCategorizationData();
   }, []);
+
+  const uid = auth.currentUser?.uid;
 
   const getRecipeSteps = (recipe: RecipeDetails) => {
     if (
@@ -180,6 +188,47 @@ export default function App() {
     }
   };
 
+  // const clearFilters = () => {
+  //   setFilters((prev) => ({
+  //     ...prev,
+  //     cuisine: "",
+  //     diet: "",
+  //   }));
+  // };
+
+  // const hasActiveFilters = filters.cuisine || filters.diet;
+
+  const uploadSavedRecipesSet = async (recipesSet: Set<number>) => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.error("No user logged in — cannot upload saved recipes.");
+      return;
+    }
+
+    const recipesData = {
+      savedRecipeIds: Array.from(recipesSet),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const jsonString = JSON.stringify(recipesData, null, 2);
+    const file = new File(
+      [new Blob([jsonString], { type: "application/json" })],
+      "savedRecipes.json",
+      { type: "application/json" }
+    );
+
+    uploadBookmarkedRecipe(
+      file,
+      user.uid,
+      (data) => {
+        console.log("Saved recipes uploaded:", data);
+      },
+      (error) => {
+        console.error("Error uploading saved recipes:", error);
+      }
+    );
+  };
+
   const toggleSaveRecipe = (id: number) => {
     const updated = new Set(savedRecipes);
     if (updated.has(id)) {
@@ -188,6 +237,8 @@ export default function App() {
       updated.add(id);
     }
     setSavedRecipes(updated);
+    // Upload the updated set to Firebase
+    uploadSavedRecipesSet(updated);
   };
 
   useEffect(() => {
@@ -208,6 +259,32 @@ export default function App() {
     setSelectedRecipe(recipe);
     setLoadingRecipeDetails(false);
   };
+
+  const saveRecipeToDatabase = async (recipe: RecipeDetails) => {
+    try {
+      if (!uid) {
+        console.warn("User not logged in — cannot save recipe");
+        return;
+      }
+
+      const jsonString = JSON.stringify(recipe, null, 2);
+      const timestamp = Date.now();
+
+      const file = new File([jsonString], `${timestamp}-${recipe.id}.json`, {
+        type: "application/json",
+      });
+
+      await uploadSavedRecipe(file, uid, () => {
+        console.log("Recipe saved!");
+      });
+
+      await updateDailyNutritionTotals(uid);
+
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+    }
+  };
+
 
   // ------------------- Render -------------------
   
@@ -244,6 +321,7 @@ export default function App() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => onNavigate?.("meal-prep")}
               className="rounded-full border-gray-200 hover:bg-gray-50 gap-1.5 h-9 md:h-10"
             >
               <Refrigerator size={16} />
@@ -562,6 +640,20 @@ export default function App() {
               </div>
             </div>
           ) : null}
+
+          {/* Cook Button */}
+          <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl p-4 border-t border-gray-200">
+            <Button
+              className="w-full py-5 text-lg rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md active:scale-[0.98] transition"
+              onClick={() => {
+                if (selectedRecipe) {
+                  saveRecipeToDatabase(selectedRecipe);
+                }
+              }}
+            >
+              Cook?
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

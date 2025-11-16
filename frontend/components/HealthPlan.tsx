@@ -11,6 +11,7 @@ import RecipesScreen from "../components/RecipesScreen";
 import HealthPlanScreen from "../components/HealthPlanScreen";
 import ProfileScreen from "../components/ProfileScreen";
 import BottomNav from "../components/BottomNav";
+import { MealPrepPlan } from "./FavoriteRecipes";
 
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState<string>("onboarding");
@@ -108,7 +109,9 @@ const App = () => {
           />
         );
       case "recipes":
-        return <RecipesScreen />;
+        return <RecipesScreen onNavigate={setCurrentScreen} />;
+      case "meal-prep":
+        return <MealPrepPlan onBack={() => setCurrentScreen("recipes")} />;
       case "health-plan":
         return <HealthPlanScreen />;
       case "profile":

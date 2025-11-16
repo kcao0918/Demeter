@@ -318,7 +318,23 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     await file.makePublic();
 
     const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-    res.json({ url, name: req.file.originalname, path: storagePath });
+
+    // By default return metadata about the uploaded file. If the file is a
+    // JSON payload, parse and include its content in the response so the
+    // client (frontend) can immediately access savedRecipeIds without a
+    // subsequent GET request.
+    const responsePayload = { url, name: req.file.originalname, path: storagePath };
+    if (req.file.mimetype === "application/json") {
+      try {
+        const text = req.file.buffer.toString("utf-8");
+        responsePayload.content = JSON.parse(text);
+      } catch (parseErr) {
+        console.warn("[UPLOAD] Failed to parse uploaded JSON content:", parseErr.message);
+        responsePayload.contentError = parseErr.message;
+      }
+    }
+
+    res.json(responsePayload);
   } catch (err) {
     console.error(err);
     res.status(500).send("Upload failed");
@@ -326,7 +342,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 // ---------------- Fetch healthdata endpoint ----------------
-app.get("/healthdata/:uid", async (req, res) => {
+app.get("/:uid/healthdata", async (req, res) => {
   try {
     const { uid } = req.params;
     if (!uid) return res.status(400).send("Missing uid");
@@ -370,6 +386,38 @@ app.get("/healthdata/:uid", async (req, res) => {
   } catch (err) {
     console.error("[HEALTHDATA] Error fetching healthdata:", err);
     res.status(500).json({ error: "Failed to fetch healthdata", details: err.message });
+  }
+});
+
+app.get("/:uid/recipes/bookmarked/", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    if (!uid) return res.status(400).json({ error: "Missing uid" });
+
+    const prefix = `${uid}/recipes/bookmarked/`;
+    console.log(`[BOOKMARKED] Fetching files with prefix: ${prefix}`);
+
+    const [files] = await bucket.getFiles({ prefix });
+
+    if (!files || files.length === 0) {
+      console.warn(`[BOOKMARKED] No files found for UID: ${uid}`);
+      return res.status(404).json({ error: "No bookmarked recipes found", prefix, uid });
+    }
+
+    // Sort by timeCreated to get the latest
+    files.sort((a, b) => new Date(b.metadata.timeCreated) - new Date(a.metadata.timeCreated));
+    const latestFile = files[0];
+
+    console.log(`[BOOKMARKED] Serving latest file: ${latestFile.name}`);
+
+    const [content] = await latestFile.download();
+    const jsonData = JSON.parse(content.toString("utf-8"));
+
+    console.log(`[BOOKMARKED] Parsed data keys:`, Object.keys(jsonData));
+    res.json(jsonData);
+  } catch (err) {
+    console.error("[BOOKMARKED] Error fetching bookmarked recipes:", err);
+    res.status(500).json({ error: "Failed to fetch bookmarked recipes", details: err.message });
   }
 });
 

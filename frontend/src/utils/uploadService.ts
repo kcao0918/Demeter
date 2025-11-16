@@ -3,7 +3,7 @@
  * Utility functions for uploading files to backend with predefined folders
  */
 import { updateDailyNutritionTotals } from "../utils/dailyNutrition";
-
+import { getRecipeInformation, type RecipeDetails } from "./spoonacular";
 interface UploadResponse {
   url: string;
   name: string;
@@ -84,6 +84,7 @@ const handleUpload = async (
 /**
  * Upload functions for specific folders
  */
+
 export const uploadUserFridgeImage = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "images/fridge", onSuccess, onError);
 
@@ -95,6 +96,35 @@ export const uploadUserInputFile = (file: File | null, uid: string | null, onSuc
 
 export const uploadBookmarkedRecipe = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "recipes/bookmarked", onSuccess, onError);
+
+/**
+ * Fetch bookmarked recipes for a user (returns the savedRecipeIds array from the most recently added bookmarked file)
+ * @param uid - User ID
+ * @returns Promise resolving to array of recipe details sorted by most recent
+ */
+export const getBookmarkedRecipe = async (uid: string | null): Promise<RecipeDetails[]> => {
+  if (!uid) throw new Error("Missing uid");
+
+  const url = `http://localhost:8080/${encodeURIComponent(uid)}/recipes/bookmarked/`;
+  const res = await fetch(url, { method: "GET" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch bookmarked recipes: ${res.status}`);
+  }
+
+  const data = await res.json();
+  console.log("Bookmarked recipes response:", data);
+  const recipeIds = data.savedRecipeIds || [];
+  console.log("Bookmarked recipe IDs (most recent):", recipeIds);
+  
+  // Fetch full recipe details for each ID
+  const recipes = await Promise.all(
+    recipeIds.map((id: number) => getRecipeInformation(id).catch(() => null))
+  );
+
+  // Return recipes in reverse order (most recently added first)
+  return recipes.filter((recipe): recipe is RecipeDetails => recipe !== null).reverse();
+};
 
 export const uploadPatientSetupInfo = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "healthdata", onSuccess, onError);
