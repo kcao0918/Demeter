@@ -13,7 +13,13 @@ const path = require("path");
 
 // Initialize Express
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://yourapp.com"], // allowed origins
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // HTTP + WebSocket setup
@@ -473,12 +479,10 @@ app.get("/:uid/recipes/bookmarked/", async (req, res) => {
     res.json(jsonData);
   } catch (err) {
     console.error("[BOOKMARKED] Error fetching bookmarked recipes:", err);
-    res
-      .status(500)
-      .json({
-        error: "Failed to fetch bookmarked recipes",
-        details: err.message,
-      });
+    res.status(500).json({
+      error: "Failed to fetch bookmarked recipes",
+      details: err.message,
+    });
   }
 });
 
