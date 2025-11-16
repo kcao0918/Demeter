@@ -32,108 +32,81 @@ export default function GroceryStoreScreen({ onBack }: GroceryStoreScreenProps) 
 
   const fetchNearbyGroceryStores = async (location: { lat: number; lng: number }) => {
     try {
-      // Mock data for demonstration - In production, you'd call a backend endpoint
-      // that uses Google Places API server-side to avoid CORS issues
+      // console.log("[GROCERY] Fetching stores for location:", location);
+      const url = `http://localhost:8080/api/nearby-stores`;
+      // console.log("[GROCERY] API URL:", url);
       
-      const mockStores: GroceryStore[] = [
-        {
-          place_id: "1",
-          name: "Whole Foods Market",
-          vicinity: "123 Main St, Atlanta, GA",
-          geometry: {
-            location: {
-              lat: location.lat + 0.01,
-              lng: location.lng + 0.01,
-            },
-          },
-          rating: 4.5,
-          opening_hours: { open_now: true },
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          place_id: "2",
-          name: "Kroger",
-          vicinity: "456 Oak Ave, Atlanta, GA",
-          geometry: {
-            location: {
-              lat: location.lat + 0.02,
-              lng: location.lng - 0.01,
-            },
-          },
-          rating: 4.2,
-          opening_hours: { open_now: true },
-        },
-        {
-          place_id: "3",
-          name: "Publix Super Market",
-          vicinity: "789 Pine Rd, Atlanta, GA",
-          geometry: {
-            location: {
-              lat: location.lat - 0.015,
-              lng: location.lng + 0.02,
-            },
-          },
-          rating: 4.6,
-          opening_hours: { open_now: false },
-        },
-        {
-          place_id: "4",
-          name: "Trader Joe's",
-          vicinity: "321 Elm St, Atlanta, GA",
-          geometry: {
-            location: {
-              lat: location.lat + 0.025,
-              lng: location.lng + 0.015,
-            },
-          },
-          rating: 4.7,
-          opening_hours: { open_now: true },
-        },
-        {
-          place_id: "5",
-          name: "Sprouts Farmers Market",
-          vicinity: "654 Maple Dr, Atlanta, GA",
-          geometry: {
-            location: {
-              lat: location.lat - 0.01,
-              lng: location.lng - 0.02,
-            },
-          },
-          rating: 4.4,
-          opening_hours: { open_now: true },
-        },
-      ];
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+        body: JSON.stringify({
+          lat: location.lat,
+          lng: location.lng
+        })
+      });
       
-      setStores(mockStores);
+      // console.log("[GROCERY] Response status:", response.status);
+      // console.log("[GROCERY] Response ok:", response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[GROCERY] Error response:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      // console.log("[GROCERY] Response data:", data);
+      // console.log("[GROCERY] Data status:", data.status);
+      // console.log("[GROCERY] Number of results:", data.results?.length || 0);
+      
+      if (data.results && data.results.length > 0) {
+        // console.log("[GROCERY] Setting stores:", data.results.length);
+        setStores(data.results.slice(0, 10)); // Get top 10 stores
+      } else {
+        // console.warn("[GROCERY] No results found in response");
+        setError("No grocery stores found nearby.");
+      }
+      
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching grocery stores:", err);
-      setError("Failed to fetch grocery stores. Please try again.");
+      console.error("[GROCERY] Error fetching grocery stores:", err);
+      // console.error("[GROCERY] Error details:", {
+      //   message: err instanceof Error ? err.message : String(err),
+      //   stack: err instanceof Error ? err.stack : undefined
+      // });
+      setError(`Failed to fetch grocery stores: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // console.log("[GROCERY] Component mounted, requesting location");
     // Get user's current location
     if (navigator.geolocation) {
+      // console.log("[GROCERY] Geolocation API available");
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          // console.log("[GROCERY] Location received:", position.coords);
           const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
+          // console.log("[GROCERY] Parsed location:", location);
           setUserLocation(location);
           fetchNearbyGroceryStores(location);
         },
         (error) => {
-          console.error("Error getting location:", error);
-          setError("Unable to get your location. Please enable location services.");
+          console.error("[GROCERY] Error getting location:", error);
+          // console.error("[GROCERY] Error code:", error.code);
+          // console.error("[GROCERY] Error message:", error.message);
+          setError(`Unable to get your location: ${error.message}. Please enable location services.`);
           setLoading(false);
         }
       );
     } else {
+      console.error("[GROCERY] Geolocation not supported");
       setError("Geolocation is not supported by your browser.");
       setLoading(false);
     }

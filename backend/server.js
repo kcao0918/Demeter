@@ -4,6 +4,7 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const multer = require("multer");
 const http = require("http");
+const https = require("https");
 const socketIo = require("socket.io");
 const GeminiService = require("./aiService");
 const OCRService = require("./ocrService");
@@ -33,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 let aiService;
 try {
   aiService = new GeminiService(process.env.GEMINI_API_KEY, admin);
-  console.log(" AI Service initialized");
+  // console.log(" AI Service initialized");
 } catch (error) {
   console.warn(" AI Service not initialized:", error.message);
 }
@@ -42,7 +43,7 @@ try {
 let ocrService;
 try {
   ocrService = new OCRService("medicalDocuments");
-  console.log(" OCR Service initialized");
+  // console.log(" OCR Service initialized");
 } catch (error) {
   console.warn(" OCR Service not initialized:", error.message);
 }
@@ -50,6 +51,120 @@ try {
 // Register ElevenLabs routes
 const elevenlabsRouter = require('./elevenlabs/route');
 app.use('/api', elevenlabsRouter);
+
+// ---------------- Google Places API (New) endpoint ----------------
+app.post("/api/nearby-stores", async (req, res) => {
+  try {
+    // console.log("[NEARBY-STORES] Request received");
+    const { lat, lng } = req.body;
+    // console.log("[NEARBY-STORES] Params:", { lat, lng });
+    
+    if (!lat || !lng) {
+      console.error("[NEARBY-STORES] Missing lat or lng");
+      return res.status(400).json({ error: "Latitude and longitude are required" });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    // console.log("[NEARBY-STORES] API Key present:", !!apiKey);
+    if (!apiKey) {
+      console.error("[NEARBY-STORES] No API key configured");
+      return res.status(500).json({ error: "Google Maps API key not configured" });
+    }
+
+    // New Places API endpoint
+    const url = `https://places.googleapis.com/v1/places:searchNearby`;
+    // console.log("[NEARBY-STORES] Calling Google Places API (New)");
+    
+    // Request body for new Places API
+    const requestBody = JSON.stringify({
+      includedTypes: ["grocery_store", "supermarket"],
+      maxResultCount: 10,
+      locationRestriction: {
+        circle: {
+          center: {
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng)
+          },
+          radius: 5000.0
+        }
+      }
+    });
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.currentOpeningHours,places.id'
+      }
+    };
+
+    const apiRequest = https.request(url, options, (apiResponse) => {
+      let data = '';
+      
+      apiResponse.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      apiResponse.on('end', () => {
+        try {
+          // console.log("[NEARBY-STORES] Google API response status:", apiResponse.statusCode);
+          const parsedData = JSON.parse(data);
+          // console.log("[NEARBY-STORES] Number of results:", parsedData.places?.length || 0);
+          
+          if (apiResponse.statusCode === 200 && parsedData.places) {
+            // Transform new API response to match legacy format for frontend compatibility
+            const transformedData = {
+              status: "OK",
+              results: parsedData.places.map(place => ({
+                place_id: place.id,
+                name: place.displayName?.text || "Unknown Store",
+                vicinity: place.formattedAddress || "",
+                geometry: {
+                  location: {
+                    lat: place.location?.latitude || 0,
+                    lng: place.location?.longitude || 0
+                  }
+                },
+                rating: place.rating,
+                opening_hours: place.currentOpeningHours ? {
+                  open_now: place.currentOpeningHours.openNow
+                } : undefined
+              }))
+            };
+            
+            // console.log("[NEARBY-STORES] Sending successful response with", transformedData.results.length, "stores");
+            res.json(transformedData);
+          } else if (apiResponse.statusCode === 200 && !parsedData.places) {
+            // console.log("[NEARBY-STORES] No stores found in area");
+            res.json({ status: "ZERO_RESULTS", results: [] });
+          } else {
+            console.error("[NEARBY-STORES] Google Places API error:", parsedData);
+            res.status(apiResponse.statusCode).json({ error: parsedData.error?.message || "API error" });
+          }
+        } catch (parseError) {
+          console.error("[NEARBY-STORES] Error parsing response:", parseError);
+          console.error("[NEARBY-STORES] Raw data:", data);
+          res.status(500).json({ error: "Failed to parse API response" });
+        }
+      });
+    });
+
+    apiRequest.on('error', (error) => {
+      console.error("[NEARBY-STORES] HTTPS request error:", error);
+      res.status(500).json({ error: error.message });
+    });
+
+    apiRequest.write(requestBody);
+    apiRequest.end();
+    
+  } catch (error) {
+    console.error("[NEARBY-STORES] Exception caught:", error);
+    console.error("[NEARBY-STORES] Error message:", error.message);
+    console.error("[NEARBY-STORES] Error stack:", error.stack);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // ---------------- AI endpoints ----------------
 
@@ -217,7 +332,7 @@ app.get("/healthdata/:uid", async (req, res) => {
     if (!uid) return res.status(400).send("Missing uid");
 
     const prefix = `${uid}/healthdata/`;
-    console.log(`[HEALTHDATA] Fetching files with prefix: ${prefix}`);
+    // console.log(`[HEALTHDATA] Fetching files with prefix: ${prefix}`);
 
     const [files] = await bucket.getFiles({ prefix });
 
@@ -228,7 +343,7 @@ app.get("/healthdata/:uid", async (req, res) => {
     }
 
     // Sort files by timestamp in filename (assuming <timestamp>-<filename>.json)
-    console.log(`[HEALTHDATA] Found ${files.length} file(s) in ${prefix}:`);
+    // console.log(`[HEALTHDATA] Found ${files.length} file(s) in ${prefix}:`);
     files.forEach((f) => {
       const fileName = f.name.split("/").pop() || "";
       const timestamp = parseInt(fileName.split("-")[0] || "0");
@@ -244,13 +359,13 @@ app.get("/healthdata/:uid", async (req, res) => {
       return bTime - aTime;
     })[0];
 
-    console.log(`[HEALTHDATA] Serving latest file: ${latestFile.name}`);
+    // console.log(`[HEALTHDATA] Serving latest file: ${latestFile.name}`);
 
     const contents = await latestFile.download();
     const jsonData = JSON.parse(contents.toString("utf-8"));
 
-    console.log(`[HEALTHDATA] Parsed data keys:`, Object.keys(jsonData));
-    console.log(`[HEALTHDATA] firstName: ${jsonData.personalInfo.firstName}, lastName: ${jsonData.personalInfo.lastName}`);
+    // console.log(`[HEALTHDATA] Parsed data keys:`, Object.keys(jsonData));
+    // console.log(`[HEALTHDATA] firstName: ${jsonData.personalInfo.firstName}, lastName: ${jsonData.personalInfo.lastName}`);
     res.json(jsonData);
   } catch (err) {
     console.error("[HEALTHDATA] Error fetching healthdata:", err);

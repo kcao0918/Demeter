@@ -7,7 +7,7 @@ let voiceService;
 
 try {
   voiceService = new VoiceService();
-  console.log('Voice Service initialized');
+  // console.log('Voice Service initialized');
 } catch (error) {
   console.warn('Voice Service not initialized:', error.message);
 }
