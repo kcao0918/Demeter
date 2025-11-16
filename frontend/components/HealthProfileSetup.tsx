@@ -19,6 +19,7 @@ export default function HealthProfileSetup({ onComplete }: HealthProfileSetupPro
     age: "",
     height: "",
     weight: "",
+    sex: "",
   });
 
   const [conditions, setConditions] = useState({
@@ -52,6 +53,7 @@ export default function HealthProfileSetup({ onComplete }: HealthProfileSetupPro
     }
 
     const profileData = {
+      uid: user.uid,
       personalInfo,
       conditions,
       allergies,
@@ -200,6 +202,18 @@ export default function HealthProfileSetup({ onComplete }: HealthProfileSetupPro
                     setPersonalInfo({ ...personalInfo, weight: e.target.value })
                   }
                   placeholder="kg or lbs"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sex">Sex</Label>
+                <Input
+                  id="sex"
+                  value={personalInfo.sex}
+                  onChange={(e) =>
+                    setPersonalInfo({ ...personalInfo, sex: e.target.value })
+                  }
+                  placeholder="male or female"
                 />
               </div>
             </div>

@@ -5,7 +5,7 @@ export interface PersonalInfo {
   age: number;
   weight: number; // kg
   height: number; // cm
-  sex: "male" | "female";
+  sex: string;
 }
 
 export interface Conditions {

@@ -16,12 +16,14 @@ import { db } from "../firebaseConfig";
 import { collection, doc, getDoc } from "firebase/firestore";
 
 interface HealthProfile {
+  uid: string;
   personalInfo: {
     firstName: string;
     lastName: string;
     age: string;
     height: string;
     weight: string;
+    sex: string;
   };
   conditions: {
     diabetes: boolean;
@@ -65,8 +67,7 @@ export default function Dashboard({ onNavigate, healthProfile }: DashboardProps)
   useEffect(() => {
     if (!healthProfile) return;
     const fetchDailyTotals = async () => {
-      // const uid = healthProfile.uid; // make sure uid exists in HealthProfile
-      const uid = "WduTzZu2MLhzD71J8sADohSvrLw1"; // TEMP
+      const uid = healthProfile.uid;
       if (!uid) return;
 
       const today = new Date();
@@ -105,8 +106,7 @@ export default function Dashboard({ onNavigate, healthProfile }: DashboardProps)
       age: parseNumber(healthProfile.personalInfo.age, defaultPersonalInfo.age),
       weight: parseNumber(healthProfile.personalInfo.weight, defaultPersonalInfo.weight),
       height: parseNumber(healthProfile.personalInfo.height, defaultPersonalInfo.height),
-      sex: "male",
-      // sex: healthProfile.personalInfo.sex, defaultPersonalInfo.sex,
+      sex: healthProfile.personalInfo.sex || defaultPersonalInfo.sex,
     };
 
     const conditions: Conditions = healthProfile.conditions || defaultConditions;
