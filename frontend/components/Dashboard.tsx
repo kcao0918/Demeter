@@ -52,8 +52,6 @@ export default function Dashboard({ onNavigate, healthProfile }: DashboardProps)
   ];
 
   // Default values
-  const [showModal, setShowModal] = useState(false);
-
   const defaultPersonalInfo: PersonalInfo = { age: 30, weight: 70, height: 170, sex: "male" };
   const defaultConditions: Conditions = { diabetes: false, highBP: false, highCholesterol: false };
   const defaultDietary: Dietary = { vegetarian: false, vegan: false, lowSodium: false, lowCarb: false };
@@ -216,13 +214,7 @@ export default function Dashboard({ onNavigate, healthProfile }: DashboardProps)
                   whileTap={{ scale: 0.95 }}
                 >
                   <Card
-                    onClick={() => {
-                      if (action.id === "groceries") {
-                        setShowModal(true); // show modal
-                      } else {
-                        onNavigate(action.id);
-                      }
-                    }}
+                    onClick={() => onNavigate(action.id)}
                     className="p-4 bg-white hover:shadow-xl cursor-pointer transition-all duration-300 border-2 border-transparent hover:border-gray-100"
                   >
                     <div className="flex flex-col items-center text-center gap-3">
@@ -274,28 +266,6 @@ export default function Dashboard({ onNavigate, healthProfile }: DashboardProps)
           </Card>
         </motion.div>
       </div>
-
-    {showModal && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center"
-        >
-          <h3 className="text-gray-900 text-lg font-semibold mb-4">Coming Soon!</h3>
-          <p className="text-gray-700 mb-6">This feature will be available in a future update.</p>
-          <button
-            onClick={() => setShowModal(false)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            Close
-          </button>
-        </motion.div>
-      </div>
-    )}
-
     </div>
   );
 }

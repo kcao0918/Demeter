@@ -7,6 +7,7 @@ import ReceiptConfirmScreen from "../components/ReceiptConfirmScreen";
 import RecipesScreen from "../components/RecipesScreen";
 import HealthPlanScreen from "../components/HealthPlanScreen";
 import ProfileScreen from "../components/ProfileScreen";
+import GroceryStoreScreen from "../components/GroceryStoreScreen";
 import BottomNav from "../components/BottomNav";
 import { auth } from "../firebaseConfig";
 
@@ -80,7 +81,7 @@ const App = () => {
       case "profile-setup":
         return <HealthProfileSetup onComplete={handleProfileComplete} />;
       case "home":
-        return <Dashboard onNavigate={setCurrentScreen} />;
+        return <Dashboard onNavigate={setCurrentScreen} healthProfile={null} />;
       case "scan":
         return <ReceiptScanScreen onBack={() => setCurrentScreen("home")} onNavigate={setCurrentScreen} />;
       case "receipt-confirm":
@@ -91,8 +92,10 @@ const App = () => {
         return <HealthPlanScreen />;
       case "profile":
         return <ProfileScreen />;
+      case "groceries":
+        return <GroceryStoreScreen onBack={() => setCurrentScreen("home")} />;
       default:
-        return <Dashboard onNavigate={setCurrentScreen} />;
+        return <Dashboard onNavigate={setCurrentScreen} healthProfile={null} />;
     }
   };
 
