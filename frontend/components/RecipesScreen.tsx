@@ -1,26 +1,18 @@
 import {
   Heart,
-  X,
   Clock,
   Users,
-  Flame,
   Star,
-  ChevronLeft,
   Refrigerator,
   ChefHat,
-  TrendingUp,
   Sparkles,
-  SlidersHorizontal,
   Utensils,
   CheckCircle2,
-  PlayCircle,
 } from "lucide-react";
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
-  searchRecipes,
-  getRecipeInformation,
   findRecipesByIngredients,
   type RecipeDetails,
   getRecipeInformationBulk,
@@ -30,53 +22,15 @@ import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
 } from "../components/ui/dialog";
 
 import TextToSpeech from "./TextToSpeech";
 
 // Mock fridge INGREDIENTS
-
 const FRIDGE_INGREDIENTS = ["chicken", "milk", "carrot", "yeast"];
 
 // INGREDIENTS the user cannot eat
 const EXCLUDE_INGREDIENTS = ["egg", "bread"];
-
-// Cuisine filter list
-const CUISINES = [
-  { value: "italian", label: "Italian" },
-  { value: "mexican", label: "Mexican" },
-  { value: "chinese", label: "Chinese" },
-  { value: "indian", label: "Indian" },
-  { value: "japanese", label: "Japanese" },
-  { value: "thai", label: "Thai" },
-  { value: "mediterranean", label: "Mediterranean" },
-  { value: "american", label: "American" },
-  { value: "french", label: "French" },
-  { value: "greek", label: "Greek" },
-];
-
-// Diet list
-const DIETS = [
-  { value: "vegetarian", label: "Vegetarian" },
-  { value: "vegan", label: "Vegan" },
-  { value: "gluten free", label: "Gluten Free" },
-  { value: "ketogenic", label: "Keto" },
-  { value: "paleo", label: "Paleo" },
-  { value: "pescetarian", label: "Pescetarian" },
-  { value: "whole30", label: "Whole30" },
-];
-
-// Filter type
-interface RecipeFilters {
-  cuisine: string;
-  diet: string;
-  includeINGREDIENTS: string[];
-  excludeINGREDIENTS: string[];
-}
 
 export default function App() {
   const [recipeList, setRecipeList] = useState<RecipeDetails[]>([]);
@@ -87,17 +41,8 @@ export default function App() {
   );
   const [loadingRecipeDetails, setLoadingRecipeDetails] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState<Set<number>>(new Set());
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
-  // test
   const [selectedRecipeSteps, setSelectedRecipeSteps] = useState<string>("");
-
-  const [filters, setFilters] = useState<RecipeFilters>({
-    includeINGREDIENTS: [...FRIDGE_INGREDIENTS],
-    excludeINGREDIENTS: [...EXCLUDE_INGREDIENTS],
-    cuisine: "",
-    diet: "",
-  });
 
   const getRecipeSteps = (recipe: RecipeDetails) => {
     if (
@@ -113,46 +58,6 @@ export default function App() {
       setSelectedRecipeSteps("No instructions available.");
     }
   };
-
-  // Memoized fetch function to prevent infinite loops
-  // const handleGetRecipes = useCallback(async () => {
-  //   setLoading(true);
-  //   setError(null);
-
-  //   try {
-  //     console.log("Fetching recipes with filters:", {
-  //       INGREDIENTS: filters.includeINGREDIENTS,
-  //       excluded: filters.excludeINGREDIENTS,
-  //       cuisine: filters.cuisine,
-  //       diet: filters.diet,
-  //     });
-
-  //     const recipes = await searchRecipes(
-  //       filters.includeINGREDIENTS,
-  //       filters.excludeINGREDIENTS,
-  //       filters.cuisine || undefined,
-  //       filters.diet || undefined,
-  //       10
-  //     );
-
-  //     console.log("Fetched recipes:", recipes.length, recipes);
-
-  //     if (recipes.length === 0) {
-  //       setError(
-  //         "No recipes found with these INGREDIENTS. Try different ones!"
-  //       );
-  //     }
-  //     setRecipeList(recipes);
-  //   } catch (err) {
-  //     const message =
-  //       err instanceof Error ? err.message : "Failed to fetch recipes";
-  //     console.error("Error fetching recipes:", err);
-  //     setError(message);
-  //     setRecipeList([]);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, [filters]);
 
   const handleGetRecipes = async () => {
     console.log("Fetching recipes...");
@@ -199,8 +104,6 @@ export default function App() {
     }
   };
 
-  const hasActiveFilters = filters.cuisine || filters.diet;
-
   const toggleSaveRecipe = (id: number) => {
     const updated = new Set(savedRecipes);
     if (updated.has(id)) {
@@ -230,31 +133,6 @@ export default function App() {
     setLoadingRecipeDetails(false);
   };
 
-  // const handleRecipeClick = async (recipe: RecipeDetails) => {
-  //   setLoadingRecipeDetails(true);
-  //   setIsRecipeModalOpen(true);
-
-  //   try {
-  //     // Fetch full recipe details
-  //     const fullRecipe = await getRecipeInformation(recipe.id);
-  //     if (fullRecipe) {
-  //       setSelectedRecipe(fullRecipe);
-  //     } else {
-  //       setSelectedRecipe(recipe);
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching recipe details:", err);
-  //     setSelectedRecipe(recipe);
-  //   } finally {
-  //     setLoadingRecipeDetails(false);
-  //   }
-  // };
-
-  const closeRecipeModal = () => {
-    setIsRecipeModalOpen(false);
-    setTimeout(() => setSelectedRecipe(null), 300);
-  };
-
   // ------------------- Render -------------------
   return (
     <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 pb-20 overflow-y-auto">
@@ -271,7 +149,7 @@ export default function App() {
               </p>
               <h1 className="text-gray-900 mb-1">Recipes from Your Fridge</h1>
               <p className="text-gray-600 text-sm">
-                {filters.includeINGREDIENTS.length} INGREDIENTS ready
+                {FRIDGE_INGREDIENTS.length} INGREDIENTS ready
               </p>
             </div>
             <Button
@@ -293,7 +171,7 @@ export default function App() {
             </div>
             <div className="overflow-x-auto -mx-4 px-4 scrollbar-hidden">
               <div className="flex gap-2 pb-2">
-                {filters.includeINGREDIENTS.map((ingredient, index) => (
+                {FRIDGE_INGREDIENTS.map((ingredient, index) => (
                   <Badge
                     key={index}
                     variant="secondary"
@@ -305,8 +183,6 @@ export default function App() {
               </div>
             </div>
           </div>
-          {/* Filter Button */}
-          <div className="flex items-center gap-2"></div>
         </div>
       </div>
 
@@ -434,14 +310,6 @@ export default function App() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                {/* Close Button */}
-                {/* <button
-                  onClick={closeRecipeModal}
-                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-all size-6"
-                >
-                  <X size={20} className="text-gray-900" />
-                </button> */}
-
                 {/* Save Button */}
                 <button
                   onClick={(e) => {
@@ -526,17 +394,17 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* INGREDIENTS */}
-                {selectedRecipe.extendedINGREDIENTS &&
-                  selectedRecipe.extendedINGREDIENTS.length > 0 && (
+                {/* Ingredients */}
+                {selectedRecipe.extendedIngredients &&
+                  selectedRecipe.extendedIngredients.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <ChefHat size={18} className="text-violet-600" />
-                        <h3 className="text-gray-900">INGREDIENTS</h3>
+                        <h3 className="text-gray-900">Ingredients</h3>
                       </div>
                       <div className="space-y-2">
-                        {selectedRecipe.extendedINGREDIENTS.map(
-                          (ingredient, index) => (
+                        {selectedRecipe.extendedIngredients.map(
+                          (ingredient: any, index: number) => (
                             <div
                               key={index}
                               className="flex items-start gap-2 text-sm text-gray-700"
