@@ -265,6 +265,47 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => console.log("Client disconnected"));
 });
 
+// ---------------- Recipe endpoint ----------------
+app.get("/:uid/recipes/saved/:date", async (req, res) => {
+  try {
+    const { uid, date } = req.params; 
+    if (!uid || !date) return res.status(400).json({ error: "Missing uid or date" });
+
+    const prefix = `${uid}/recipes/saved/${date}/`;
+    console.log(`[RECIPES] Fetching saved recipes with prefix: ${prefix}`);
+
+    const [files] = await bucket.getFiles({ prefix });
+
+    if (!files || files.length === 0) {
+      console.warn(`[RECIPES] No saved recipes found for UID: ${uid} on ${date}`);
+      return res.status(404).json({ error: "No recipes found for this date", prefix, uid, date });
+    }
+
+    const sortedFiles = files.sort((a, b) => {
+      const aTime = parseInt(a.name.split("/").pop()?.split("-")[0] || "0");
+      const bTime = parseInt(b.name.split("/").pop()?.split("-")[0] || "0");
+      return bTime - aTime;
+    });
+
+    const recipes = await Promise.all(
+      sortedFiles.map(async (f) => {
+        try {
+          const [content] = await f.download();
+          return JSON.parse(content.toString("utf-8"));
+        } catch (err) {
+          console.warn(`[RECIPES] Failed to parse JSON for file ${f.name}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    res.json(recipes.filter(Boolean));
+  } catch (err) {
+    console.error("[RECIPES] Error fetching saved recipes:", err);
+    res.status(500).json({ error: "Failed to fetch recipes", details: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

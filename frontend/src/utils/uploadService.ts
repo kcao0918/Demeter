@@ -2,6 +2,7 @@
  * uploadService.ts
  * Utility functions for uploading files to backend with predefined folders
  */
+import { updateDailyNutritionTotals } from "../utils/dailyNutrition";
 
 interface UploadResponse {
   url: string;
@@ -95,9 +96,26 @@ export const uploadUserInputFile = (file: File | null, uid: string | null, onSuc
 export const uploadBookmarkedRecipe = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "recipes/bookmarked", onSuccess, onError);
 
-export const uploadSavedRecipe = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
-  handleUpload(file, uid, "recipes/saved", onSuccess, onError);
-
 export const uploadPatientSetupInfo = (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) =>
   handleUpload(file, uid, "healthdata", onSuccess, onError);
 
+export const uploadSavedRecipe = async (file: File | null, uid: string | null, onSuccess?: (data: UploadResponse) => void, onError?: (error: string) => void) => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const dateFolder = `${yyyy}-${mm}-${dd}`;
+
+  const folder = `recipes/saved/${dateFolder}`;
+  
+  const data = await handleUpload(file, uid, folder, onSuccess, onError);
+
+  // Update daily totals after upload
+  if (uid) {
+    updateDailyNutritionTotals(uid).catch(err =>
+      console.error("Failed to update daily totals:", err)
+    );
+  }
+
+  return data;
+};
