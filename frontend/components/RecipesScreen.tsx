@@ -10,6 +10,7 @@ import {
   type RecipeDetails,
 } from "../src/utils/spoonacular";
 import { Button } from "./ui/button";
+import TextToSpeech from "./TextToSpeech";
 
 export default function RecipesScreen() {
   const [editingDayIndex, setEditingDayIndex] = useState<number | null>(null);
@@ -151,6 +152,10 @@ export default function RecipesScreen() {
       <div className="bg-white px-6 py-6 border-b flex-shrink-0">
         <h2 className="text-gray-900 mb-1">Your Recipes</h2>
         <p className="text-gray-600">Personalized for your health goals</p>
+        <TextToSpeech
+          text="Welcome to your personalized recipe screen! Here, you'll find recipes tailored to your health goals and dietary needs. Enjoy cooking!"
+          className="mt-2"
+        />
         <Button onClick={handleGetRecipes} disabled={loading} className="m-4">
           Apples
         </Button>
