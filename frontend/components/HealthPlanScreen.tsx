@@ -248,21 +248,21 @@ export default function HealthPlanScreen() {
               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-2 shadow-sm">
                 <span className="text-2xl">🔥</span>
               </div>
-              <div className="text-gray-900">7 Days</div>
+              <div className="text-gray-900">0 Days</div>
               <div className="text-gray-600">Streak</div>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-2 shadow-sm">
                 <span className="text-2xl">🥗</span>
               </div>
-              <div className="text-gray-900">24 Meals</div>
+              <div className="text-gray-900">0 Meals</div>
               <div className="text-gray-600">Tracked</div>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-2 shadow-sm">
                 <span className="text-2xl">⭐</span>
               </div>
-              <div className="text-gray-900">5 Goals</div>
+              <div className="text-gray-900">0 Goals</div>
               <div className="text-gray-600">Reached</div>
             </div>
           </div>
